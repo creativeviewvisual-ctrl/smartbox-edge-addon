@@ -1,0 +1,70 @@
+# Add-on do Home Assistant (roda no proprio Raspberry) — SmartBox Edge.
+# Opera o IoT do SmartBox OFFLINE: valida a palma (porta) na rede local quando a
+# internet cai, a partir de um snapshot de autorizacao que sincroniza da nuvem.
+# Ver services/edge/README.md e o Roadmap "Operacao OFFLINE do IoT".
+#
+# Este arquivo e a FONTE do manifesto publico (repositorio de add-on do HA, D2/D3 de
+# features/Atualizacao pela Fila (Edge e OTA).md): o workflow edge-release.yml gera o
+# config.yaml publico a partir deste, acrescentando so a linha `image:`. Nunca editar o
+# publico a mao. `version` tem de bater com package.json e com a tag edge/vX.Y.Z
+# (scripts/conferir-versao.mjs, rodado no CI).
+name: SmartBox Edge
+# Bump de versao OBRIGATORIO a cada mudanca de codigo: o Supervisor do HA cacheia
+# a imagem por versao — sem bump, o Rebuild reusa a imagem antiga (visto 2026-07-03).
+version: "0.11.2"
+slug: smartbox_edge
+# Imagem pronta no GHCR (gerado por services/edge/scripts/gerar-manifesto.mjs — NAO editar a mao;
+# a fonte e services/edge/config.yaml no monorepo). O Supervisor usa a tag = version.
+image: ghcr.io/creativeviewvisual-ctrl/smartbox-edge-{arch}
+description: Valida a palma (porta) e opera o IoT offline na rede local do predio.
+url: https://github.com/creativeviewvisual-ctrl/smartbox-edge-addon
+arch:
+  - aarch64
+  - amd64
+# Precisa do token do Supervisor pra falar com o HA local (luzes/porta via REST).
+homeassistant_api: true
+# hassio_api: le GET /network/info do Supervisor pra descobrir o IP do host na LAN
+# (host_network e false — as interfaces do container sao a bridge do Docker) e
+# auto-reportar a URL local (x-edge-lan-url) que o painel exibe. Ver src/net.ts.
+hassio_api: true
+host_network: false
+# OTA por MQTT (0.4.0): le os .bin da pasta compartilhada do Raspberry —
+# \\<ip-do-pi>\share\smartbox-ota pelo Explorer. Somente LEITURA: quem gerencia os
+# arquivos e o instalador; o add-on so anuncia e serve. Ver services/edge/src/ota.ts.
+map:
+  - share:ro
+# O ESP do sensor aponta pra http://<ip-do-raspberry>:8377/biometria/recognize
+ports:
+  "8377/tcp": 8377
+ports_description:
+  "8377/tcp": API local do edge (o ESP do sensor aponta pra ca)
+# /data e persistente entre reinicios (cache do snapshot + fila de logs).
+options:
+  cloud_url: "https://smartbox-api.onrender.com"
+  edge_key: ""
+  sync_interval_s: 60
+  recognize_cloud_timeout_ms: 3000
+  # Login do portal web dos ESPs (0.6.0) — e com ele que o edge executa os comandos
+  # que o painel enfileira (ler status, ler/gravar config, reiniciar). Fica SO aqui,
+  # no Raspberry: nenhuma credencial trafega no comando vindo da nuvem. Se os ESPs
+  # ainda estiverem com a senha de fabrica, troque nos ESPs e aqui.
+  esp_portal_user: "admin"
+  esp_portal_pass: ""
+  # Batimento da central (0.6.2): URL do check deste predio no healthchecks.io
+  # (https://hc-ping.com/<uuid>). A cada ciclo de sync o edge da um ping; se o Pi
+  # cair ou ficar sem internet, o healthchecks avisa. Vazio = sem batimento.
+  healthchecks_ping_url: ""
+  # Chave PUBLICA ed25519 (base64 de 32 bytes) que confere a assinatura dos pacotes de firmware
+  # publicados pela nuvem (0.11.0). Gerada no PC por scripts/firmware/assinar.mjs; a privada nunca
+  # sai de la. Pacote assinado so e gravado se a assinatura bater; sem chave aqui, pacote
+  # assinado e recusado (e com a chave global LIGADA so pacote assinado desce).
+  firmware_chave_publica: ""
+schema:
+  cloud_url: url
+  edge_key: password
+  sync_interval_s: int(15,3600)
+  recognize_cloud_timeout_ms: int(500,10000)
+  esp_portal_user: str
+  esp_portal_pass: password
+  healthchecks_ping_url: str?
+  firmware_chave_publica: str?
