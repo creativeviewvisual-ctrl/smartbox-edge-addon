@@ -126,9 +126,9 @@ foram 4 dias no ar da u03 do Centro (30/10 a 03/11/2026).
 Com a chave do prédio em **sombra** ou **ligado** (painel → card "ESPs do prédio", com PIN), a cada
 ciclo o add-on faz **uma** chamada `POST /api/template` ao Home Assistant local e lê, para o aparelho
 de cada ESP (o `device.identifiers` do firmware; a nuvem manda o identificador e os domínios que
-contam no snapshot), se ele aparece disponível e o **IP que o próprio ESP anuncia** (hoje só o
-`sensor.*_ar_reinicio` do ar V6+). Se esse IP é diferente do cadastrado, o add-on **pergunta por TCP
-nele**, como a sonda. Tudo sobe no bloco `broker` do `POST /edge/contatos`.
+contam no snapshot), se ele aparece disponível e o **IP que o próprio ESP anuncia** (o
+`sensor.*_rede` do firmware F1 ou, no ar V6/V7, o `sensor.*_ar_reinicio`). Se esse IP é diferente do
+cadastrado, o add-on **pergunta por TCP nele** e, desde a 0.13.0, pede o `/id` (seção abaixo). Tudo sobe no bloco `broker` do `POST /edge/contatos`.
 
 - **Só a resposta no IP anunciado conta como vida** (chave `ligado`): a Central mostra amarelo
   "endereço mudou" em vez de "não responde". **Estar disponível no broker é só informação**: o
@@ -138,11 +138,32 @@ nele**, como a sonda. Tudo sobe no bloco `broker` do `POST /edge/contatos`.
 - Comando com login (Ler status, Ler config, Reiniciar) vai **sempre** para o IP cadastrado, que só
   muda com PIN no painel. Nunca para o anunciado.
 - **Sem cliente MQTT, sem credencial nova, sem opção nova.** Nunca publica `offline` retido.
-- HA fora ou template recusado: `estado: 'sem'`, fica só a sonda. Famílias que ainda não anunciam IP
-  (todas menos o ar) ficam só com a sonda até a próxima versão de firmware de cada uma (F1).
+- HA fora ou template recusado: `estado: 'sem'`, fica só a sonda. ESP ainda sem o firmware F1 (e
+  que não é ar V6+) não anuncia IP: fica só com a sonda até ser regravado.
 - Log: `[broker] N de M ESPs disponíveis no HA · K respondendo em outro endereço · J sem elo com o HA`.
 
 Página canônica: `obsidian-docs/features/Saude do ESP pelo Broker.md`.
+
+## Identidade do ESP (0.13.0) — quem responde no IP é mesmo aquele ESP?
+
+O firmware **F1** (2026-11-04: ar V8, ventilador V28, luzes V35/V36 e V37/V38, palma V2.33, portaria
+V25, lavanderia V4, acessos comuns V4, medidor V16) responde **`GET /id` sem login**:
+`{"ha_id","familia","fw","mac"}`, e todas as famílias com aparelho no HA publicam o sensor de
+diagnóstico **`sensor.*_rede`** ("Endereco na rede", atributos `ip`, `familia`, `ha_id`, `fw`, `mac`).
+
+- **Sonda:** depois da conexão TCP no IP cadastrado, pede o `/id`. Se responder como **outro**
+  aparelho (outro `ha_id` ou outra família), não conta como vivo — o IP do ESP morto foi parar em
+  outra coisa. Sem `/id` (firmware antigo, ESP ocupado): vale o TCP, como antes.
+- **Saúde pelo broker:** o `_rede` de qualquer família (com o atributo `familia` igual ao do
+  cadastro) vira o IP anunciado. Com o F1, a resposta nesse IP só conta se o `/id` confirma a
+  identidade; o anúncio antigo do ar (`_ar_reinicio`, V6/V7) continua aceitando o TCP.
+- ESP que já provou a identidade desde que a central subiu e passa a aceitar TCP **sem** responder o
+  `/id` por **3 ciclos seguidos** conta como sem contato (câmera, ponto Wi-Fi ou roteador que herdou o
+  IP não respondem o `/id`). A memória é só da central em execução: depois de reiniciar, vale o TCP até
+  o ESP responder o `/id` de novo.
+- Aparelho que já tem o `_rede` não volta ao anúncio antigo do ar (que só confere TCP).
+- `/id` com prazo de 2,5 s e corpo de no máximo 2 KB (`src/identidade.ts`).
+- Log da sonda: `· K respondendo como OUTRO aparelho no endereço cadastrado`.
 
 ## Comandos remotos nos ESPs (0.6.0) — mexer num ESP sem ir ao prédio
 
