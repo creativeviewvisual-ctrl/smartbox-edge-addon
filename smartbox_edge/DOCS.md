@@ -163,6 +163,8 @@ diagnóstico **`sensor.*_rede`** ("Endereco na rede", atributos `ip`, `familia`,
   o ESP responder o `/id` de novo.
 - Aparelho que já tem o `_rede` não volta ao anúncio antigo do ar (que só confere TCP).
 - `/id` com prazo de 2,5 s e corpo de no máximo 2 KB (`src/identidade.ts`).
+- **0.13.1:** o `/id` traz `instalado`; chip recém-gravado (`instalado: false`, Wi-Fi de fábrica, ainda com a
+  identidade de fábrica, ex. luzes `u08`) **nunca** confere com o ESP cadastrado, mesmo com o identificador igual.
 - Log da sonda: `· K respondendo como OUTRO aparelho no endereço cadastrado`.
 
 ## Comandos remotos nos ESPs (0.6.0) — mexer num ESP sem ir ao prédio

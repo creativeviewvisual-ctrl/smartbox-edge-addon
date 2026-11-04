@@ -11,7 +11,7 @@
 name: SmartBox Edge
 # Bump de versao OBRIGATORIO a cada mudanca de codigo: o Supervisor do HA cacheia
 # a imagem por versao — sem bump, o Rebuild reusa a imagem antiga (visto 2026-07-03).
-version: "0.13.0"
+version: "0.13.1"
 slug: smartbox_edge
 # Imagem pronta no GHCR (gerado por services/edge/scripts/gerar-manifesto.mjs — NAO editar a mao;
 # a fonte e services/edge/config.yaml no monorepo). O Supervisor usa a tag = version.
