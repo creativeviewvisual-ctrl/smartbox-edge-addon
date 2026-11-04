@@ -117,6 +117,33 @@ Home Assistant (`supervisor`, `homeassistant`, `core-*`, `addon_*`, `localhost`)
 sem ESP cadastrado = sem sonda. Log: `[sonda] N de M ESPs responderam`. Página canônica:
 `obsidian-docs/features/Aviso de ESP sem Contato.md`.
 
+## Saúde pelo broker (0.12.0) — o ESP não "morre" porque o IP mudou
+
+A sonda acima pergunta ao **IP cadastrado**. Quando o roteador dá outro IP ao ESP (queda de energia
+sem reserva de DHCP), ela bate no vazio e a Central acusa "mudo" com o ESP funcionando pelo app —
+foram 4 dias no ar da u03 do Centro (30/10 a 03/11/2026).
+
+Com a chave do prédio em **sombra** ou **ligado** (painel → card "ESPs do prédio", com PIN), a cada
+ciclo o add-on faz **uma** chamada `POST /api/template` ao Home Assistant local e lê, para o aparelho
+de cada ESP (o `device.identifiers` do firmware; a nuvem manda o identificador e os domínios que
+contam no snapshot), se ele aparece disponível e o **IP que o próprio ESP anuncia** (hoje só o
+`sensor.*_ar_reinicio` do ar V6+). Se esse IP é diferente do cadastrado, o add-on **pergunta por TCP
+nele**, como a sonda. Tudo sobe no bloco `broker` do `POST /edge/contatos`.
+
+- **Só a resposta no IP anunciado conta como vida** (chave `ligado`): a Central mostra amarelo
+  "endereço mudou" em vez de "não responde". **Estar disponível no broker é só informação**: o
+  `online` retido de um ESP que morreu junto com o broker volta para sempre, e nada que o HA mostre
+  separa isso de um ESP vivo (reinício do HA, reconexão ao broker e até o hóspede apertando o botão da
+  porta morta mudam o que o HA mostra). Revisão de segurança de 2026-11-04.
+- Comando com login (Ler status, Ler config, Reiniciar) vai **sempre** para o IP cadastrado, que só
+  muda com PIN no painel. Nunca para o anunciado.
+- **Sem cliente MQTT, sem credencial nova, sem opção nova.** Nunca publica `offline` retido.
+- HA fora ou template recusado: `estado: 'sem'`, fica só a sonda. Famílias que ainda não anunciam IP
+  (todas menos o ar) ficam só com a sonda até a próxima versão de firmware de cada uma (F1).
+- Log: `[broker] N de M ESPs disponíveis no HA · K respondendo em outro endereço · J sem elo com o HA`.
+
+Página canônica: `obsidian-docs/features/Saude do ESP pelo Broker.md`.
+
 ## Comandos remotos nos ESPs (0.6.0) — mexer num ESP sem ir ao prédio
 
 O portal web dos ESPs só responde na LAN. A partir da **0.6.0**, o painel enfileira um comando e
