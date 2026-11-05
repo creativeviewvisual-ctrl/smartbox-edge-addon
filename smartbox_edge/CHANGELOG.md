@@ -1,3 +1,9 @@
+## 0.14.0 — 2026-11-05
+
+- Imagem: `ghcr.io/creativeviewvisual-ctrl/smartbox-edge-{arch}:0.14.0`
+- Digest aarch64: `sha256:e1d9aac99807837a61838e7260b7fb162928a9a53cd08634fc2237e474c08c2b` · amd64: `sha256:04603b7edefb5c6f5d45ad469033ef97e2dac93f9e38619d4ccbbb0be03d9ddd` (iguais ao Release da tag, conferido pelo workflow)
+- Tag do monorepo: `edge/v0.14.0` (commit `2c05d5a5fbdfe250252bb0fc5f1318fe3cd0a4a9`)
+
 ## 0.13.1 — 2026-11-04
 
 - Imagem: `ghcr.io/creativeviewvisual-ctrl/smartbox-edge-{arch}:0.13.1`

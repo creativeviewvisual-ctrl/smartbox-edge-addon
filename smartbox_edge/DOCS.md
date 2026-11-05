@@ -167,6 +167,37 @@ diagnóstico **`sensor.*_rede`** ("Endereco na rede", atributos `ip`, `familia`,
   identidade de fábrica, ex. luzes `u08`) **nunca** confere com o ESP cadastrado, mesmo com o identificador igual.
 - Log da sonda: `· K respondendo como OUTRO aparelho no endereço cadastrado`.
 
+## Instalação automática da palma (0.14.0) — ligar o quadro e a unidade funcionar
+
+Pedido do Vinicius ("futuramente deve ser tudo fácil", 2026-11-04). O leitor de palma já sai da
+bancada com a unidade gravada e entra sozinho no Wi-Fi do prédio; o que falta é o **token** da unidade
+(a identidade dele na nuvem) e o **endereço desta central**. Com a **janela de instalação aberta** no
+painel (card "Sensores de palma", PIN, 2 h padrão e 8 h no máximo), a cada ciclo (`src/instalacao.ts`,
+laço próprio como o OTA):
+
+1. lê no Home Assistant os leitores de palma anunciados no broker (`sensor.*_rede`, firmware F1);
+2. pergunta a cada um `GET /id`: tem de ser palma, instalado, **V2.35+**, **sem token** (`token: false`,
+   V2.36) e com o `ha_id` da unidade **único** na lista (dois com o mesmo = nada para nenhum);
+3. **gera o token aqui** (24 bytes aleatórios) e pede a entrega à nuvem mandando **só o hash**
+   (`POST /edge/instalacao/entregar`); o banco decide numa transação (migration 0368): janela aberta,
+   sensor `aguardando_entrega`, MAC único na janela (segundo MAC = **conflito**: a primeira entrega é
+   revogada, a janela fecha, o sino avisa), 3 tentativas por MAC;
+4. com "entregue", relê o `/id`, faz login no portal e grava **só** `url`/`url2`/`token`; falhou =
+   pede revogação na hora;
+5. guarda o hash no snapshot local para autenticar o leitor antes do próximo sync.
+
+O **primeiro uso** do token (o leitor reinicia e chama `/biometria/*`) é conferido antes de atender:
+do **mesmo IP** da entrega = `confirmado`; de outro IP = a nuvem **revoga** o hash e o leitor volta a
+aguardar (`registrarUsoDoToken`, chamado pelo servidor). Entrega sem uso em 10 min morre sozinha.
+Quando todos os sensores do prédio confirmam, a janela fecha ("prédio completo").
+
+O que isto **não** prova (security-auditor, 2026-11-04): `/id`, MAC e `_rede` são declarados pelo
+aparelho. As barreiras são a janela curta aberta pelo admin, a entrega única presa ao MAC/IP, a
+confirmação pelo primeiro uso, o conflito que revoga, e o **F8 do firmware V2.36** (o leitor só aceita
+`url`/`token` vindos desta central, ou sem token nos 15 min após ligar, ou com o botão BOOT). O token
+nunca vai a log, a disco (fora do hash no snapshot) nem à nuvem em texto. Sem janela aberta, o ciclo
+não faz nada — e sem a 0368 a nuvem responde "janela fechada".
+
 ## Comandos remotos nos ESPs (0.6.0) — mexer num ESP sem ir ao prédio
 
 O portal web dos ESPs só responde na LAN. A partir da **0.6.0**, o painel enfileira um comando e
