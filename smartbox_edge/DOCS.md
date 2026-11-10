@@ -167,6 +167,21 @@ diagnóstico **`sensor.*_rede`** ("Endereco na rede", atributos `ip`, `familia`,
   identidade de fábrica, ex. luzes `u08`) **nunca** confere com o ESP cadastrado, mesmo com o identificador igual.
 - Log da sonda: `· K respondendo como OUTRO aparelho no endereço cadastrado`.
 
+## Volta automática do firmware (0.15.0) — a central conta o que a OTA fez em cada ESP
+
+Desenho: `obsidian-docs/features/Volta Automatica do Firmware.md`. A partir do ar V12 o ESP liga a
+versão nova em teste e volta sozinho para a anterior se ela não se confirmar; o `/id` (sem login)
+passa a dizer `ota`, `particao`, `recusada`, `voltou_de`, `motivo`, `falta`, `confirmada_por`,
+`desistiu` e `reabrir_usado`. A central:
+
+- lê esses campos na sonda, **só de quem provou ser o ESP cadastrado**, valida cada um por lista
+  fechada (`identidade.ts`) e sobe em `POST /edge/contatos` na lista `otaEsps` (API antiga ignora);
+- põe no aviso de OTA o pedido de reabrir (`reabrir: {versao, id, md5}`) quando o `ota.json` do
+  alvo tem `"reabrir": "V13"` (o id muda quando o `ota.json` é salvo de novo: um pedido = salvar o
+  arquivo) ou quando **duas ou mais unidades** da mesma família recusam a mesma versão em até 1 h
+  (problema do prédio, não da versão): reoferta **uma vez por versão**, guardada em
+  `/data/reofertas-ota.json`. O ESP usa cada id uma vez só.
+
 ## Instalação automática da palma (0.14.0) — ligar o quadro e a unidade funcionar
 
 Pedido do Vinicius ("futuramente deve ser tudo fácil", 2026-11-04). O leitor de palma já sai da
